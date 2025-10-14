@@ -1,16 +1,12 @@
-FROM node:18
-
-ENV METEOR_ALLOW_SUPERUSER=true
-ENV ROOT_URL="http://localhost:3000"
-ENV NODE_OPTIONS="--max-old-space-size=512"
-
-RUN curl "https://install.meteor.com/" | sh
-
-COPY . /usr/src/app
+# build stage
+FROM node:18 AS build
 WORKDIR /usr/src/app
+COPY package*.json ./
+RUN npm install
+COPY . .
 
-RUN chmod -R 700 /usr/src/app/.meteor/local
-RUN meteor npm install
-
-EXPOSE 3000
+# production stage
+FROM node:18-alpine AS production
+WORKDIR /usr/src/app
+COPY --from=build /usr/src/app .
 CMD ["npm", "start"]

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= t('welcome to fake artist') %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1><%= t('welcome to fake artist') %></h1>
+    <hr>
+    <div id="start-menu">
+      <div class="button-container">
+        <button id="btn-new-game"><%= t('new game') %></button>
+        <button id="btn-join-game"><%= t('join game') %></button>
+      </div>
+    </div>
+    <div id="create-game-form" style="display: none;">
+      <hr>
+      <form id="create-game">
+        <input type="text" id="create-player-name" placeholder="<%= t('enter your name') %>">
+        <button type="submit"><%= t('create game') %></button>
+      </form>
+    </div>
+    <div id="join-game-form" style="display: none;">
+      <hr>
+      <form id="join-game">
+        <input type="text" id="join-game-code" placeholder="<%= t('enter an access code') %>">
+        <input type="text" id="join-player-name" placeholder="<%= t('enter your name') %>">
+        <button type="submit"><%= t('join') %></button>
+      </form>
+    </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>

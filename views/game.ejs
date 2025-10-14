@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= t('game in progress') %> - <%= t('welcome to fake artist') %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1><%= t('game in progress') %></h1>
+    <h4 id="timer"></h4>
+    <div id="game-info">
+      <p><%= t('your role') %>: <strong id="player-role"></strong></p>
+      <p><%= t('your category') %>: <strong id="game-category"></strong></p>
+      <p><%= t('the word') %>: <strong id="game-word"></strong></p>
+    </div>
+    <hr>
+    <h2><%= t('players') %></h2>
+    <ul id="game-player-list">
+      <% game.players.forEach(player => { %>
+        <li><%= player.name %></li>
+      <% }); %>
+    </ul>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>

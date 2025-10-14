@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= t('waiting for players') %> - <%= t('welcome to fake artist') %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1><%= t('waiting for players') %></h1>
+    <p><%= t('access code') %>: <strong><%= game.code %></strong></p>
+    <hr>
+    <h2><%= t('players') %></h2>
+    <ul id="player-list">
+      <% game.players.forEach(player => { %>
+        <li>
+          <%= player.name %>
+          <% if (player.isGameMaster) { %>
+            (<%= t('question master indicator') %>)
+          <% } %>
+        </li>
+      <% }); %>
+    </ul>
+    <hr>
+    <h2><%= t('variants') %></h2>
+    <!-- Placeholder for game settings -->
+    <hr>
+    <button id="btn-start-game" style="display: none;"><%= t('start game') %></button>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    window.game = <%- JSON.stringify(game) %>;
+    window.translations = {
+      questionMasterIndicator: "<%= t('question master indicator') %>",
+      remove: "<%= t('remove') %>"
+    };
+  </script>
+  <script src="/js/main.js"></script>
+</body>
+</html>
