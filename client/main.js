@@ -1,9 +1,18 @@
-﻿Handlebars.registerHelper('toCapitalCase', function (str) {
+import 'jquery';
+
+Handlebars.registerHelper('toCapitalCase', function (str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 });
 
+// Add i18n helper for templates
+Handlebars.registerHelper('_', function (key) {
+  // Depend on Session to trigger re-render when language changes
+  Session.get('language');
+  return TAPi18n.__(key);
+});
+
 function initUserLanguage() {
-  let language = amplify.store("language");
+  let language = localStorage.getItem("language");
 
   if (language) {
     Session.set("language", language);
@@ -32,7 +41,7 @@ function getUserLanguage() {
 function setUserLanguage(language) {
   TAPi18n.setLanguage(language).done(function () {
     Session.set("language", language);
-    amplify.store("language", language);
+    localStorage.setItem("language", language);
   });
 }
 
@@ -40,7 +49,7 @@ function getLanguageDirection() {
   let language = getUserLanguage()
   let rtlLanguages = ['he', 'ar'];
 
-  if ($.inArray(language, rtlLanguages) !== -1) {
+  if (rtlLanguages.includes(language)) {
     return 'rtl';
   } else {
     return 'ltr';
@@ -73,7 +82,7 @@ function shuffle(a) {
 
 function getLanguageList() {
   let languages = TAPi18n.getLanguages();
-  let languageList = _.map(languages, function (value, key) {
+  let languageList = Object.entries(languages).map(function ([key, value]) {
     let selected = "";
 
     if (key == getUserLanguage()) {
@@ -247,7 +256,7 @@ function resetUserState() {
   let player = getCurrentPlayer();
 
   if (player) {
-    Players.remove(player._id);
+    Players.removeAsync(player._id);
   }
 
   Session.set("gameID", null);
@@ -296,7 +305,7 @@ function leaveGame() {
   Analytics.insert(gameAnalytics);
 
   Session.set("currentView", "startMenu");
-  Players.remove(player._id);
+  Players.removeAsync(player._id);
 
   Session.set("playerID", null);
 }
@@ -325,11 +334,27 @@ if (hasHistoryApi()) {
     if (accessCode) {
       currentURL += `${accessCode}/`;
     }
-    window.history.pushState(null, null, currentURL);
+
+    // Don't update if we're already on the correct URL
+    if (window.location.pathname !== currentURL) {
+      window.history.pushState(null, null, currentURL);
+    }
   }
-  Tracker.autorun(trackUrlState);
+
+  // Delay the autorun setup so routing can set urlAccessCode first
+  Meteor.startup(() => {
+    setTimeout(() => {
+      Tracker.autorun(trackUrlState);
+    }, 100);
+  });
 }
-Tracker.autorun(trackGameState);
+
+// Delay trackGameState so routing can set currentView first
+Meteor.startup(() => {
+  setTimeout(() => {
+    Tracker.autorun(trackGameState);
+  }, 50);
+});
 
 FlashMessages.configure({
   autoHide: true,
@@ -354,12 +379,14 @@ Template.footer.helpers({
 
 Template.footer.events({
   'click .btn-set-language': function (event) {
-    let language = $(event.target).data('language');
+    let language = event.target.dataset.language;
     setUserLanguage(language);
+    return false;
   },
   'change .language-select': function (event) {
     let language = event.target.value;
     setUserLanguage(language);
+    return false;
   }
 });
 
@@ -373,6 +400,7 @@ Template.startMenu.events({
     };
 
     Analytics.insert(referrerAnalytics);
+    return false;
   },
   'click #btn-join-game': function () {
     let referrer = document.referrer;
@@ -384,12 +412,7 @@ Template.startMenu.events({
     Analytics.insert(referrerAnalytics);
 
     Session.set("currentView", "joinGame");
-  }
-});
-
-Template.startMenu.helpers({
-  alternativeURL() {
-    return Meteor.settings.public.alternative;
+    return false;
   }
 });
 
@@ -405,6 +428,7 @@ Template.startMenu.rendered = function () {
 
 Template.createGame.events({
   'submit #create-game': function (event) {
+    event.preventDefault();
 
     let playerName = event.target.playerName.value;
 
@@ -442,11 +466,12 @@ Template.createGame.helpers({
 });
 
 Template.createGame.rendered = function (event) {
-  $("#player-name").focus();
+  document.getElementById("player-name").focus();
 };
 
 Template.joinGame.events({
   'submit #join-game': function (event) {
+    event.preventDefault();
     let accessCode = event.target.accessCode.value;
     let playerName = event.target.playerName.value;
 
@@ -514,13 +539,15 @@ Template.joinGame.rendered = function (event) {
   Analytics.insert(referrerAnalytics);
 
   let urlAccessCode = Session.get('urlAccessCode');
+  let accessCodeInput = document.getElementById("access-code");
+  let playerNameInput = document.getElementById("player-name");
 
   if (urlAccessCode) {
-    $("#access-code").val(urlAccessCode);
-    $("#access-code").hide();
-    $("#player-name").focus();
+    accessCodeInput.value = urlAccessCode;
+    accessCodeInput.style.display = 'none';
+    playerNameInput.focus();
   } else {
-    $("#access-code").focus();
+    accessCodeInput.focus();
   }
 };
 
@@ -540,10 +567,7 @@ Template.lobby.helpers({
     // sort alphabetically by category
     uniqueCategories.sort((a, b) => a.localeCompare(b));
     const categories = uniqueCategories.map((category) => {
-      let categorySelected = amplify.store(category);
-      if (categorySelected === undefined) {
-        categorySelected = true;
-      }
+      let categorySelected = localStorage.getItem(category) !== null ? localStorage.getItem(category) === 'true' : true;
       return { text: category, selected: categorySelected };
     });
 
@@ -570,9 +594,28 @@ Template.lobby.helpers({
 });
 
 Template.lobby.events({
-  'click .btn-leave': leaveGame,
+  'click .btn-leave': function () {
+    leaveGame();
+    return false;
+  },
+  'change #use-confused-artist-variant': function (event) {
+    // Toggle visibility of other variant containers
+    const variants = document.querySelectorAll('.variant');
+    const confusedVariant = event.target.parentNode.parentNode.parentNode;
+    variants.forEach(variant => {
+      if (variant !== confusedVariant) {
+        variant.style.display = event.target.checked ? 'none' : '';
+      }
+    });
+  },
   'click .btn-toggle-category-select': function () {
-    $(".category-select").toggle();
+    let categorySelect = document.querySelector(".category-select");
+    if (categorySelect.style.display === 'none') {
+      categorySelect.style.display = '';
+    } else {
+      categorySelect.style.display = 'none';
+    }
+    return false;
   },
   'click .btn-submit-user-word': function (event) {
     let game = getCurrentGame();
@@ -588,7 +631,7 @@ Template.lobby.events({
       language: Session.get("language")
     };
 
-    let questionMasterId = $(event.currentTarget).data('player-id');
+    let questionMasterId = event.currentTarget.dataset.playerId;
     let currentPlayers = Array.from(Players.find({ gameID: game._id }, { _id: { $ne: questionMasterId } }));
     let regularPlayers = currentPlayers.filter(player => player._id != questionMasterId);
 
@@ -743,7 +786,7 @@ Template.lobby.events({
     let game = getCurrentGame();
     let categoriesList = document.querySelectorAll('input[name="category-name"]');
     categoriesList.forEach((category) => {
-      amplify.store(category.value, category.checked);
+      localStorage.setItem(category.value, category.checked);
     });
 
     categoriesList = Array.from(categoriesList).filter((category) => category.checked).map((category) => category.value);
@@ -925,24 +968,34 @@ Template.lobby.events({
     let tooltip = document.getElementById("copyAccessLinkTooltip");
 
     tooltip.innerHTML = TAPi18n.__("ui.copied");
+    return false;
   },
   'mouseout #copyAccessLinkImg': function () {
     let tooltip = document.getElementById("copyAccessLinkTooltip");
 
     tooltip.innerHTML = TAPi18n.__("ui.copy access link");;
+    return false;
   },
   'click .btn-toggle-qrcode': function () {
-    $(".qrcode-container").toggle();
+    let qrcodeContainer = document.querySelector(".qrcode-container");
+    if (qrcodeContainer.style.display === 'none') {
+      qrcodeContainer.style.display = '';
+    } else {
+      qrcodeContainer.style.display = 'none';
+    }
+    return false;
   },
   'click .btn-remove-player': function (event) {
-    let playerID = $(event.currentTarget).data('player-id');
-    Players.remove(playerID);
+    let playerID = event.currentTarget.dataset.playerId;
+    Players.removeAsync(playerID);
+    return false;
   },
   'click .btn-edit-player': function (event) {
     let game = getCurrentGame();
     resetUserState();
     Session.set('urlAccessCode', game.accessCode);
     Session.set('currentView', 'joinGame');
+    return false;
   },
   'click .btn-bad-category': function () {
     console.log('got a bad category');
@@ -1011,7 +1064,10 @@ Template.gameView.helpers({
 });
 
 Template.gameView.events({
-  'click .btn-leave': leaveGame,
+  'click .btn-leave': function () {
+    leaveGame();
+    return false;
+  },
   'click .btn-end': function () {
     let game = getCurrentGame();
     Games.update(game._id, { $set: { state: 'waitingForPlayers' } });
@@ -1028,9 +1084,18 @@ Template.gameView.events({
     };
 
     Analytics.insert(gameAnalytics);
+    return false;
   },
   'click .btn-toggle-status': function () {
-    $(".status-container-content").toggle();
+    let statusElements = document.querySelectorAll(".status-container-content");
+    statusElements.forEach(element => {
+      if (element.style.display === 'none') {
+        element.style.display = '';
+      } else {
+        element.style.display = 'none';
+      }
+    });
+    return false;
   },
   'click .game-countdown': function () {
     let game = getCurrentGame();
@@ -1042,5 +1107,36 @@ Template.gameView.events({
     } else {
       Games.update(game._id, { $set: { paused: true, pausedTime: currentServerTime } });
     }
+    return false;
   }
+});
+
+// Initialize the app
+Meteor.startup(() => {
+  // Handle routing based on URL
+  function handleRouting() {
+    const path = window.location.pathname;
+    const accessCodeMatch = path.match(/\/(\d+)\/?$/);
+
+    if (accessCodeMatch && accessCodeMatch[1]) {
+      const accessCode = accessCodeMatch[1];
+      Session.set("urlAccessCode", accessCode);
+      Session.set("currentView", "joinGame");
+    } else {
+      Session.set("currentView", "startMenu");
+    }
+  }
+
+  // Run routing first
+  handleRouting();
+
+  // Wait for translations to load before rendering
+  const waitForTranslations = () => {
+    if (TAPi18n.isReady()) {
+      Blaze.render(Template.main, document.body);
+    } else {
+      setTimeout(waitForTranslations, 100);
+    }
+  };
+  waitForTranslations();
 });

@@ -6,12 +6,6 @@
   <link href="https://fonts.googleapis.com/css?family=Alef|Oswald|Open+Sans" rel="stylesheet" async media="none"
     onload="if(media!='all')media='all'">
 
-    <!-- these CSS hrefs are wrong, and styles.css doesn't exist. Not sure what's going on here -->
-  <link rel="stylesheet" href="css/normalize.css" type="text/css" async media="none"
-    onload="if(media!='all')media='all'">
-  <link rel="stylesheet" href="css/skeleton.css" type="text/css" async media="none"
-    onload="if(media!='all')media='all'">
-  <link rel="stylesheet" href="css/styles.css" type="text/css" async media="none" onload="if(media!='all')media='all'">
 
   <link rel="apple-touch-icon" sizes="57x57" href="/apple-icon-57x57.png">
   <link rel="apple-touch-icon" sizes="60x60" href="/apple-icon-60x60.png">
@@ -61,10 +55,6 @@
     <div>
       <a href="https://github.com/alenros/insider"><strong>{{_ "ui.try insider"}}</strong></a>
     </div>
-    {{# if alternativeURL }}
-    <p class="high-load-message">The site is currently experiencing very heavy load. If things seem slow or broken, try
-      this alternative URL: <a href="{{ alternativeURL }}">{{ alternativeURL }}</a></p>
-    {{/if}}
   </div>
 </template>
 
@@ -78,8 +68,8 @@
 
   <div class="access-buttons">
     <div class="tooltip">
-      <a class="access-button" href="javascript:void(0);">
-        <img src="/icons/copy.svg" class="icon" id="copyAccessLinkImg" style="cursor:pointer;" />
+      <a class="access-button" href="#" id="copyAccessLinkImg" style="cursor:pointer;">
+        <img src="/icons/copy.svg" class="icon" />
       </a>
       <span class="tooltiptext" id="copyAccessLinkTooltip">
         {{_ "ui.copy access link"}}
@@ -88,7 +78,7 @@
 
     <span class="access-button-separator"></span>
 
-    <a class="access-button btn-toggle-qrcode" href="javascript:void(0);">
+    <a class="access-button btn-toggle-qrcode" href="#">
       <img src="/icons/qrcode.svg" class="icon" />
     </a>
 
@@ -135,7 +125,7 @@
       <div class="tooltip">
         <span class="tooltiptext" id="playWithConfusedArtistTooltip">{{_ "ui.confused artist tooltip" }}</span>
           <label for="use-confused-artist-variant" id="confused-artist-label">
-            <input type="checkbox" id="use-confused-artist-variant" onchange="$('.variant').not(this.parentNode.parentNode.parentNode).toggle();">
+            <input type="checkbox" id="use-confused-artist-variant">
             {{{_ "ui.play with the confused artist variant"}}}
           </label>
       </div>
@@ -186,7 +176,7 @@
     <tr>
       <td colspan="2">
         {{_ "ui.choose categories"}}
-        <a class="btn-toggle-category-select" href="javascript:void(0);">{{_ "ui.show hide" }}</a>
+        <a class="btn-toggle-category-select" href="#">{{_ "ui.show hide" }}</a>
         <div class="category-select form-group" style="display: none;">
           {{#each categories}}
             {{#if this.selected }}
@@ -378,8 +368,6 @@
       <input autocorrect="off" autocapitalize="off" type="number" id="access-code" name="accessCode"
         placeholder='{{_ "ui.enter an access code" }}'>
       <input type="text" id="player-name" name="playerName" placeholder='{{_ "ui.enter your name" }}'>
-
-      {{> flashMessages}}
 
       <div class="button-container">
         <input type="submit" value='{{_ "ui.join" }}'>

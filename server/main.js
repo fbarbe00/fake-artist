@@ -1,19 +1,19 @@
 function cleanUpGamesAndPlayers(){
   let cutOff = moment().subtract(2, 'hours').toDate().getTime();
 
-  Games.remove({
+  Games.removeAsync({
     createdAt: {$lt: cutOff}
   });
 
-  Players.remove({
+  Players.removeAsync({
     createdAt: {$lt: cutOff}
   });
 }
 
 Meteor.startup(function () {
   // Delete all games and players at startup
-  Games.remove({});
-  Players.remove({});
+  Games.removeAsync({});
+  Players.removeAsync({});
 });
 
 let MyCron = new Cron(60000);

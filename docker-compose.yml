@@ -1,0 +1,29 @@
+services:
+  meteor:
+    build: .
+    container_name: fake_artist
+    restart: unless-stopped
+    ports:
+      - "40:3000"
+    depends_on:
+      - mongo
+    environment:
+      MONGO_URL: mongodb://mongo:27017/fakeartist?tls=false
+      ROOT_URL: "https://yourdomainname.com" # Replace with your domain name
+      PORT: 3000
+
+  mongo:
+    image: mongo:7
+    container_name: fake_artist_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    tmpfs:
+      - /data/db   # in-memory Mongo, resets on restart
+    command:
+      [
+        "mongod",
+        "--bind_ip_all",
+        "--wiredTigerCacheSizeGB",
+        "0.25"
+      ]
