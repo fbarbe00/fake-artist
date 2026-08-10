@@ -134,6 +134,92 @@ function getCurrentPlayer() {
   }
 }
 
+const userStateStorageKey = "fakeArtistUserState";
+
+function clearStoredUserState() {
+  try {
+    localStorage.removeItem(userStateStorageKey);
+  } catch (error) {
+    console.warn("Could not clear saved game state", error);
+  }
+}
+
+function saveUserState(game, player) {
+  try {
+    localStorage.setItem(userStateStorageKey, JSON.stringify({
+      gameID: game._id,
+      playerID: player._id,
+      accessCode: game.accessCode,
+    }));
+  } catch (error) {
+    console.warn("Could not save game state", error);
+  }
+}
+
+function clearUserSession() {
+  Session.set("gameID", null);
+  Session.set("playerID", null);
+  clearStoredUserState();
+}
+
+function restoreUserState(done) {
+  let savedState;
+  try {
+    savedState = JSON.parse(localStorage.getItem(userStateStorageKey));
+  } catch (error) {
+    clearStoredUserState();
+  }
+
+  const urlMatch = window.location.pathname.match(/\/(\d{5})\/?$/);
+  const urlAccessCode = urlMatch && urlMatch[1];
+  const isValid = savedState
+    && typeof savedState.gameID === "string"
+    && typeof savedState.playerID === "string"
+    && /^\d{5}$/.test(savedState.accessCode);
+
+  if (!isValid || (urlAccessCode && urlAccessCode !== savedState.accessCode)) {
+    clearStoredUserState();
+    done(false);
+    return;
+  }
+
+  Session.set("restoringUserState", true);
+  Meteor.subscribe('games', savedState.accessCode, function onGameReady() {
+    const game = Games.findOne({
+      _id: savedState.gameID,
+      accessCode: savedState.accessCode,
+    });
+
+    if (!game) {
+      clearUserSession();
+      Session.set("restoringUserState", false);
+      done(false);
+      return;
+    }
+
+    Meteor.subscribe('players', game._id, function onPlayersReady() {
+      const player = Players.findOne({
+        _id: savedState.playerID,
+        gameID: game._id,
+      });
+
+      if (!player) {
+        clearUserSession();
+        Session.set("restoringUserState", false);
+        done(false);
+        return;
+      }
+
+      Session.set("urlAccessCode", null);
+      Session.set("gameID", game._id);
+      Session.set("playerID", player._id);
+      Session.set("currentView", game.state === "inProgress" ? "gameView" : "lobby");
+      Session.set("restoringUserState", false);
+      done(true);
+    });
+  });
+}
+
 function generateAccessCode() {
   let accessCodeLength = 5;
   let accessCode = "";
@@ -266,11 +352,13 @@ function resetUserState() {
     Players.removeAsync(player._id);
   }
 
-  Session.set("gameID", null);
-  Session.set("playerID", null);
+  clearUserSession();
 }
 
 function trackGameState() {
+  if (Session.get("restoringUserState")) {
+    return;
+  }
   let gameID = Session.get("gameID");
   let playerID = Session.get("playerID");
 
@@ -282,8 +370,7 @@ function trackGameState() {
   let player = Players.findOne(playerID);
 
   if (!game || !player) {
-    Session.set("gameID", null);
-    Session.set("playerID", null);
+    clearUserSession();
     Session.set("currentView", "startMenu");
     return;
   }
@@ -312,9 +399,7 @@ function leaveGame() {
   Analytics.insert(gameAnalytics);
 
   Session.set("currentView", "startMenu");
-  Players.removeAsync(player._id);
-
-  Session.set("playerID", null);
+  resetUserState();
 }
 
 function hasHistoryApi() {
@@ -430,7 +515,6 @@ Template.startMenu.rendered = function () {
     action: "Start Page"
   };
   Analytics.insert(referrerAnalytics);
-  resetUserState();
 };
 
 Template.createGame.events({
@@ -455,6 +539,7 @@ Template.createGame.events({
       Session.set("language", getUserLanguage());
       Session.set("gameID", game._id);
       Session.set("playerID", player._id);
+      saveUserState(game, player);
       Session.set("currentView", "lobby");
     });
 
@@ -512,6 +597,7 @@ Template.joinGame.events({
         Session.set('urlAccessCode', null);
         Session.set("gameID", game._id);
         Session.set("playerID", player._id);
+        saveUserState(game, player);
         Session.set("currentView", "lobby");
       } else if (game) {
         FlashMessages.sendError(TAPi18n.__("ui.game already started"));
@@ -537,8 +623,6 @@ Template.joinGame.helpers({
 
 
 Template.joinGame.rendered = function (event) {
-  resetUserState();
-
   let referrer = document.referrer;
   let referrerAnalytics = {
     cameFrom: referrer,
@@ -1155,7 +1239,7 @@ Meteor.startup(() => {
     }
   }
 
-  // Run routing first
+  // Run routing first, then validate any saved player before rendering.
   handleRouting();
 
   // Wait for translations to load before rendering
@@ -1166,5 +1250,5 @@ Meteor.startup(() => {
       setTimeout(waitForTranslations, 100);
     }
   };
-  waitForTranslations();
+  restoreUserState(waitForTranslations);
 });
