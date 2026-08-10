@@ -9,6 +9,10 @@ Handlebars.registerHelper('_', function (key) {
   return TAPi18n.__(key);
 });
 
+Handlebars.registerHelper('checkedAttributes', function (checked) {
+  return checked ? { checked: true } : {};
+});
+
 function initUserLanguage() {
   let language = localStorage.getItem("language");
 
@@ -126,6 +130,23 @@ function getAccessLink() {
   return game.accessCode + "/";
 }
 
+function copyTextWithTemporaryInput(text) {
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  document.body.appendChild(textArea);
+  textArea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textArea);
+}
+
+function copyTextToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text).catch(() => copyTextWithTemporaryInput(text));
+  }
+  copyTextWithTemporaryInput(text);
+  return Promise.resolve();
+}
+
 function getCurrentPlayer() {
   let playerID = Session.get("playerID");
 
@@ -232,16 +253,76 @@ function generateAccessCode() {
   return accessCode;
 }
 
+function lobbySettingsStorageKey(gameType) {
+  return `lobbySettings:${gameType}:${getUserLanguage()}`;
+}
+
+function loadLobbySettings(gameType) {
+  try {
+    const settings = JSON.parse(localStorage.getItem(lobbySettingsStorageKey(gameType)));
+    return settings && typeof settings === "object" ? settings : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function saveLobbySetting(field, value) {
+  const game = getCurrentGame();
+  if (!game || (game.wordLanguage && game.wordLanguage !== getUserLanguage())) {
+    return;
+  }
+  const settings = loadLobbySettings(game.gameType);
+  settings[field] = value;
+  try {
+    localStorage.setItem(lobbySettingsStorageKey(game.gameType), JSON.stringify(settings));
+  } catch (error) {
+    console.warn("Could not save lobby settings", error);
+  }
+}
+
+function saveLobbySettings(game) {
+  if (game.wordLanguage && game.wordLanguage !== getUserLanguage()) {
+    return;
+  }
+  const settings = {
+    selectedCategories: game.selectedCategories,
+    useConfusedArtistVariant: game.useConfusedArtistVariant === true,
+    useAllFakeArtistsVariant: game.useAllFakeArtistsVariant === true,
+    useNoFakeArtistVariant: game.useNoFakeArtistVariant === true,
+    useLessFirstFakeArtistVariant: game.useLessFirstFakeArtistVariant === true,
+  };
+  try {
+    localStorage.setItem(lobbySettingsStorageKey(game.gameType), JSON.stringify(settings));
+  } catch (error) {
+    console.warn("Could not save lobby settings", error);
+  }
+}
+
+function updateLobbySetting(field, value) {
+  const game = getCurrentGame();
+  Games.update(game._id, { $set: { [field]: value } });
+  saveLobbySetting(field, value);
+}
+
 function generateNewGame(gameType = "fakeArtist") {
+  const savedSettings = loadLobbySettings(gameType);
   let game = {
     accessCode: generateAccessCode(),
     state: "waitingForPlayers",
     word: null,
     gameType: gameType,
+    wordLanguage: getUserLanguage(),
     lengthInMinutes: gameType === "insider" ? 5 : 10,
     endTime: null,
     paused: false,
-    pausedTime: null
+    pausedTime: null,
+    selectedCategories: Array.isArray(savedSettings.selectedCategories)
+      ? savedSettings.selectedCategories
+      : null,
+    useConfusedArtistVariant: savedSettings.useConfusedArtistVariant === true,
+    useAllFakeArtistsVariant: savedSettings.useAllFakeArtistsVariant === true,
+    useNoFakeArtistVariant: savedSettings.useNoFakeArtistVariant === true,
+    useLessFirstFakeArtistVariant: savedSettings.useLessFirstFakeArtistVariant === true,
   };
 
   let gameID = Games.insert(game);
@@ -266,10 +347,12 @@ function generateNewPlayer(game, name) {
   return Players.findOne(playerID);
 }
 
-function getWordsProvider() {
+function getWordsProvider(language) {
   let words = [];
+  const game = getCurrentGame();
+  const wordLanguage = language || (game && game.wordLanguage) || getUserLanguage();
 
-  switch (getUserLanguage()) {
+  switch (wordLanguage) {
     case "he":
       words = words_he;
       break;
@@ -327,14 +410,23 @@ function getWordsProvider() {
 }
 
 function getRandomWordAndCategory(categoriesList) {
-  // heh, this should be optimized better.
-  let filteredWords = getWordsProvider().filter(word => categoriesList.includes(word.category));
-  if (categoriesList.length === 0) {
-    filteredWords = getWordsProvider();
-  }
+  const words = getWordsProvider();
+  const selectedCategories = new Set(categoriesList);
+  const filteredWords = selectedCategories.size === 0
+    ? words
+    : words.filter(word => selectedCategories.has(word.category));
   let wordIndex = Math.floor(Math.random() * filteredWords.length);
 
   return filteredWords[wordIndex];
+}
+
+function getSelectedCategories() {
+  const game = getCurrentGame();
+  if (game && Array.isArray(game.selectedCategories)) {
+    return game.selectedCategories;
+  }
+  const categoryInputs = Array.from(document.querySelectorAll('input[name="category-name"]'));
+  return categoryInputs.filter(category => category.checked).map(category => category.value);
 }
 
 function shuffleArray(array) {
@@ -676,11 +768,15 @@ Template.lobby.helpers({
   },
   categories: function () {
     let words = getWordsProvider();
+    const game = getCurrentGame();
+    const selectedCategories = game && Array.isArray(game.selectedCategories)
+      ? new Set(game.selectedCategories)
+      : null;
     const uniqueCategories = [...new Set(words.map(word => word.category))];
     // sort alphabetically by category
     uniqueCategories.sort((a, b) => a.localeCompare(b));
     const categories = uniqueCategories.map((category) => {
-      let categorySelected = localStorage.getItem(category) !== null ? localStorage.getItem(category) === 'true' : true;
+      const categorySelected = selectedCategories ? selectedCategories.has(category) : true;
       return { text: category, selected: categorySelected };
     });
 
@@ -706,7 +802,16 @@ Template.lobby.helpers({
   }
 });
 
-function startInsiderGame(customWord) {
+Template.lobby.onCreated(function () {
+  this.autorun(() => {
+    const game = getCurrentGame();
+    if (game) {
+      saveLobbySettings(game);
+    }
+  });
+});
+
+function startInsiderGame(customWord, categories = []) {
   const game = getCurrentGame();
   const players = Players.find({ gameID: game._id }).fetch();
   if (players.length < 4) {
@@ -717,7 +822,7 @@ function startInsiderGame(customWord) {
   const chosen = shuffle(players.map((player, index) => index));
   const insiderIndex = chosen[0];
   const questionMasterIndex = chosen[1];
-  const word = customWord || getRandomWordAndCategory([]).text;
+  const word = customWord || getRandomWordAndCategory(categories).text;
   const endTime = TimeSync.serverTime(moment().add(5, 'minutes'));
 
   players.forEach((player, index) => {
@@ -747,15 +852,22 @@ Template.lobby.events({
     return false;
   },
   'change #use-confused-artist-variant': function (event) {
-    // Toggle visibility of other variant containers
-    const variants = document.querySelectorAll('.variant');
-    const confusedVariant = event.target.parentNode.parentNode.parentNode;
-    variants.forEach(variant => {
-      if (variant !== confusedVariant) {
-        variant.style.display = event.target.checked ? 'none' : '';
-      }
-    });
-    document.querySelector('.custom-word-row').style.display = event.target.checked ? 'none' : '';
+    updateLobbySetting("useConfusedArtistVariant", event.target.checked);
+  },
+  'change #use-all-fake-artists-variant': function (event) {
+    updateLobbySetting("useAllFakeArtistsVariant", event.target.checked);
+  },
+  'change #use-no-fake-artist-variant': function (event) {
+    updateLobbySetting("useNoFakeArtistVariant", event.target.checked);
+  },
+  'change #use-less-first-fake-artist-variant': function (event) {
+    updateLobbySetting("useLessFirstFakeArtistVariant", event.target.checked);
+  },
+  'change input[name="category-name"]': function () {
+    const selectedCategories = Array.from(document.querySelectorAll('input[name="category-name"]'))
+      .filter(category => category.checked)
+      .map(category => category.value);
+    updateLobbySetting("selectedCategories", selectedCategories);
   },
   'click .btn-toggle-category-select': function () {
     let categorySelect = document.querySelector(".category-select");
@@ -945,18 +1057,13 @@ Template.lobby.events({
   'click .btn-start': function () {
 
     let game = getCurrentGame();
-    if (game.gameType === "insider") {
-      return startInsiderGame();
-    }
-    let categoriesList = document.querySelectorAll('input[name="category-name"]');
-    categoriesList.forEach((category) => {
-      localStorage.setItem(category.value, category.checked);
-    });
-
-    categoriesList = Array.from(categoriesList).filter((category) => category.checked).map((category) => category.value);
+    const categoriesList = getSelectedCategories();
     if (categoriesList.length === 0) {
       FlashMessages.sendError(TAPi18n.__("ui.select a category"));
       return false;
+    }
+    if (game.gameType === "insider") {
+      return startInsiderGame(null, categoriesList);
     }
     let wordAndCategory = getRandomWordAndCategory(categoriesList);
 
@@ -1131,24 +1238,38 @@ Template.lobby.events({
   },
   'click #copyAccessLinkImg': function () {
     const accessLink = `${Meteor.absoluteUrl()}${getAccessLink()}`;
-
-    const textArea = document.createElement("textarea");
-    textArea.value = accessLink;
-    document.body.appendChild(textArea);
-    textArea.select();
-
-    document.execCommand("copy");
-    document.body.removeChild(textArea);
+    copyTextToClipboard(accessLink);
 
     let tooltip = document.getElementById("copyAccessLinkTooltip");
 
     tooltip.innerHTML = TAPi18n.__("ui.copied");
     return false;
   },
+  'click .btn-share-game': function () {
+    const game = getCurrentGame();
+    const accessLink = `${Meteor.absoluteUrl()}${getAccessLink()}`;
+    if (navigator.share) {
+      navigator.share({
+        title: TAPi18n.__(game.gameType === "insider" ? "ui.insider game" : "ui.fake artist game"),
+        text: TAPi18n.__("ui.join my game"),
+        url: accessLink,
+      }).catch(error => {
+        if (error.name === "AbortError") {
+          return;
+        }
+        copyTextToClipboard(accessLink)
+          .then(() => FlashMessages.sendSuccess(TAPi18n.__("ui.copied")));
+      });
+      return false;
+    }
+    copyTextToClipboard(accessLink)
+      .then(() => FlashMessages.sendSuccess(TAPi18n.__("ui.copied")));
+    return false;
+  },
   'mouseout #copyAccessLinkImg': function () {
     let tooltip = document.getElementById("copyAccessLinkTooltip");
 
-    tooltip.innerHTML = TAPi18n.__("ui.copy access link");;
+    tooltip.innerHTML = TAPi18n.__("ui.copy access link");
     return false;
   },
   'click .btn-toggle-qrcode': function () {

@@ -61,6 +61,9 @@
 
 <template name="lobby">
   <h4>{{_ "ui.waiting for players" }}</h4>
+  <div class="game-mode">
+    {{#if isInsiderGame}}{{_ "ui.insider game"}}{{else}}{{_ "ui.fake artist game"}}{{/if}}
+  </div>
 
   <div class="access-code">
     {{_ "ui.access code" }}:
@@ -85,9 +88,8 @@
 
     <span class="access-button-separator"></span>
 
-    <a class="access-button btn-send-access-code-email" aria-label='{{_ "ui.email game link"}}'
-      href='mailto:?subject={{_ "ui.join my game" }}&body={{ accessLink }}'>
-      <img src="/icons/envelope-open.svg" class="icon" alt="" />
+    <a class="access-button btn-share-game" href="#" aria-label='{{_ "ui.share game"}}'>
+      <img src="/icons/share.svg" class="icon" alt="" />
     </a>
   </div>
 
@@ -127,16 +129,17 @@
       <div class="tooltip">
         <span class="tooltiptext" id="playWithConfusedArtistTooltip">{{_ "ui.confused artist tooltip" }}</span>
           <label for="use-confused-artist-variant" id="confused-artist-label">
-            <input type="checkbox" id="use-confused-artist-variant">
+            <input type="checkbox" id="use-confused-artist-variant" {{checkedAttributes game.useConfusedArtistVariant}}>
             {{{_ "ui.play with the confused artist variant"}}}
           </label>
       </div>
     </div>
+    {{#unless game.useConfusedArtistVariant}}
     <div class="variant">
       <div class="tooltip">
         <span class="tooltiptext" id="playWithAllFakeArtistsTooltip">{{_ "ui.all fake artists tooltip" }}</span>
           <label for="use-all-fake-artists-variant" id="all-fake-artists-variant-label">
-            <input type="checkbox" id="use-all-fake-artists-variant">
+            <input type="checkbox" id="use-all-fake-artists-variant" {{checkedAttributes game.useAllFakeArtistsVariant}}>
             {{{_ "ui.play with the all fake-artists variant"}}}
           </label>
       </div>
@@ -145,7 +148,7 @@
       <div class="tooltip">
         <span class="tooltiptext" id="playWithNoFakeArtistTooltip">{{_ "ui.no fake-artist tooltip" }}</span>
           <label for="use-no-fake-artist-variant" id="no-fake-artist-label">
-            <input type="checkbox" id="use-no-fake-artist-variant">
+            <input type="checkbox" id="use-no-fake-artist-variant" {{checkedAttributes game.useNoFakeArtistVariant}}>
             {{{_ "ui.play with the no-fake-artist variant"}}}
           </label>
       </div>
@@ -154,15 +157,17 @@
       <div class="tooltip">
         <span class="tooltiptext" id="playWithLessFirstFakeArtistTooltip">{{_ "ui.less first fake-artist tooltip" }}</span>
           <label for="use-less-first-fake-artist-variant" id="less-first-fake-artist-label">
-            <input type="checkbox" id="use-less-first-fake-artist-variant">
+            <input type="checkbox" id="use-less-first-fake-artist-variant" {{checkedAttributes game.useLessFirstFakeArtistVariant}}>
             {{{_ "ui.play with the less first fake-artist variant"}}}
           </label>
       </div>
     </div>
+    {{/unless}}
   </div>
   {{/unless}}
 
   <table>
+    {{#unless game.useConfusedArtistVariant}}
     <tr class="custom-word-row">
       <td>
         {{_ "ui.choose own word"}}
@@ -178,7 +183,7 @@
         </div>
       </td>
     </tr>
-    {{#unless isInsiderGame}}
+    {{/unless}}
     <tr>
       <td colspan="2">
         {{_ "ui.choose categories"}}
@@ -195,7 +200,6 @@
         </div>
       </td>
     </tr>
-    {{/unless}}
     <tr>
       <td>
         {{_ "ui.let us choose"}}
