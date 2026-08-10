@@ -257,10 +257,19 @@ function lobbySettingsStorageKey(gameType) {
   return `lobbySettings:${gameType}:${getUserLanguage()}`;
 }
 
+function lobbyCategoriesStorageKey(gameType) {
+  return `lobbyCategories:${gameType}:${getUserLanguage()}`;
+}
+
 function loadLobbySettings(gameType) {
   try {
     const settings = JSON.parse(localStorage.getItem(lobbySettingsStorageKey(gameType)));
-    return settings && typeof settings === "object" ? settings : {};
+    const categories = JSON.parse(localStorage.getItem(lobbyCategoriesStorageKey(gameType)));
+    const loadedSettings = settings && typeof settings === "object" ? settings : {};
+    if (Array.isArray(categories)) {
+      loadedSettings.selectedCategories = categories;
+    }
+    return loadedSettings;
   } catch (error) {
     return {};
   }
@@ -274,6 +283,9 @@ function saveLobbySetting(field, value) {
   const settings = loadLobbySettings(game.gameType);
   settings[field] = value;
   try {
+    if (field === "selectedCategories") {
+      localStorage.setItem(lobbyCategoriesStorageKey(game.gameType), JSON.stringify(value));
+    }
     localStorage.setItem(lobbySettingsStorageKey(game.gameType), JSON.stringify(settings));
   } catch (error) {
     console.warn("Could not save lobby settings", error);
@@ -292,6 +304,9 @@ function saveLobbySettings(game) {
     useLessFirstFakeArtistVariant: game.useLessFirstFakeArtistVariant === true,
   };
   try {
+    if (Array.isArray(game.selectedCategories)) {
+      localStorage.setItem(lobbyCategoriesStorageKey(game.gameType), JSON.stringify(game.selectedCategories));
+    }
     localStorage.setItem(lobbySettingsStorageKey(game.gameType), JSON.stringify(settings));
   } catch (error) {
     console.warn("Could not save lobby settings", error);
@@ -302,6 +317,12 @@ function updateLobbySetting(field, value) {
   const game = getCurrentGame();
   Games.update(game._id, { $set: { [field]: value } });
   saveLobbySetting(field, value);
+}
+
+function updateLobbySettings(updates) {
+  const game = getCurrentGame();
+  Games.update(game._id, { $set: updates });
+  Object.entries(updates).forEach(([field, value]) => saveLobbySetting(field, value));
 }
 
 function generateNewGame(gameType = "fakeArtist") {
@@ -669,6 +690,12 @@ Template.createGame.rendered = function (event) {
   document.getElementById("player-name").focus();
 };
 
+function redirectToCreateGame() {
+  Session.set('urlAccessCode', null);
+  window.history.replaceState(null, null, '/');
+  Session.set("currentView", "createGame");
+}
+
 Template.joinGame.events({
   'submit #join-game': function (event) {
     event.preventDefault();
@@ -710,7 +737,7 @@ Template.joinGame.events({
       } else if (game) {
         FlashMessages.sendError(TAPi18n.__("ui.game already started"));
       } else {
-        FlashMessages.sendError(TAPi18n.__("ui.invalid access code"));
+        redirectToCreateGame();
       }
     });
 
@@ -747,6 +774,12 @@ Template.joinGame.rendered = function (event) {
     accessCodeInput.value = urlAccessCode;
     accessCodeInput.style.display = 'none';
     playerNameInput.focus();
+    Meteor.subscribe('games', urlAccessCode, function onGameReady() {
+      if (Session.get('currentView') === 'joinGame'
+        && !Games.findOne({ accessCode: urlAccessCode })) {
+        redirectToCreateGame();
+      }
+    });
   } else {
     accessCodeInput.focus();
   }
@@ -852,7 +885,13 @@ Template.lobby.events({
     return false;
   },
   'change #use-confused-artist-variant': function (event) {
-    updateLobbySetting("useConfusedArtistVariant", event.target.checked);
+    const updates = { useConfusedArtistVariant: event.target.checked };
+    if (event.target.checked) {
+      updates.useAllFakeArtistsVariant = false;
+      updates.useNoFakeArtistVariant = false;
+      updates.useLessFirstFakeArtistVariant = false;
+    }
+    updateLobbySettings(updates);
   },
   'change #use-all-fake-artists-variant': function (event) {
     updateLobbySetting("useAllFakeArtistsVariant", event.target.checked);
@@ -884,7 +923,7 @@ Template.lobby.events({
       const insiderWord = document.getElementById("user-word").value.trim();
       return insiderWord ? startInsiderGame(insiderWord) : false;
     }
-    if (document.getElementById("use-confused-artist-variant").checked) {
+    if (currentGame.useConfusedArtistVariant === true) {
       return false;
     }
     let game = getCurrentGame();
@@ -937,7 +976,7 @@ Template.lobby.events({
     });
 
     // All Fake Artist Variant
-    let shouldPlayAllFakeArtistsVariant = document.getElementById("use-all-fake-artists-variant").checked;
+    let shouldPlayAllFakeArtistsVariant = game.useAllFakeArtistsVariant === true;
 
     let percentEveryoneIsAFakeArtist = 10;
     let isEveryoneAFakeArtist = Math.floor(Math.random() * 100) < percentEveryoneIsAFakeArtist;
@@ -957,7 +996,7 @@ Template.lobby.events({
     // All Fake Artists variant ends
 
     // No Fake Artist Variant
-    const shouldPlayNoFakeArtistsVariant = document.getElementById('use-no-fake-artist-variant').checked;
+    const shouldPlayNoFakeArtistsVariant = game.useNoFakeArtistVariant === true;
 
     const percentNoFakeArtist = 10;
     const isNoFakeArtist = Math.floor(Math.random() * 100) < percentNoFakeArtist;
@@ -984,7 +1023,7 @@ Template.lobby.events({
       variantsUsed.push('all fake-artists');
     }
 
-    const shouldPlayLessFirstFakeArtistsVariant = document.getElementById('use-less-first-fake-artist-variant').checked;
+    const shouldPlayLessFirstFakeArtistsVariant = game.useLessFirstFakeArtistVariant === true;
 
     if (shouldPlayLessFirstFakeArtistsVariant
       && !isAllFakeArtistsVariantActive
@@ -1104,7 +1143,7 @@ Template.lobby.events({
     });
 
     // All Fake Artist Variant
-    let shouldPlayAllFakeArtistsVariant = document.getElementById("use-all-fake-artists-variant").checked;
+    let shouldPlayAllFakeArtistsVariant = game.useAllFakeArtistsVariant === true;
 
     let percentEveryoneIsAFakeArtist = 10;
     let isEveryoneAFakeArtist = Math.floor(Math.random() * 100) < percentEveryoneIsAFakeArtist;
@@ -1124,7 +1163,7 @@ Template.lobby.events({
     // All Fake Artists variant ends
 
     // No Fake Artist Variant
-    let shouldPlayNoFakeArtistsVariant = document.getElementById("use-no-fake-artist-variant").checked;
+    let shouldPlayNoFakeArtistsVariant = game.useNoFakeArtistVariant === true;
 
     let percentNoFakeArtist = 10;
     let isNoFakeArtist = Math.floor(Math.random() * 100) < percentNoFakeArtist;
@@ -1144,7 +1183,7 @@ Template.lobby.events({
     // No Fake Artist Variant ends
 
     // All Confused Artist Variant
-    let shouldPlayAllConfusedArtistsVariant = document.getElementById("use-confused-artist-variant").checked;
+    let shouldPlayAllConfusedArtistsVariant = game.useConfusedArtistVariant === true;
     let isAllConfusedArtistsVariantActive = shouldPlayAllConfusedArtistsVariant && !isAllFakeArtistsVariantActive && !isNoFakeArtistsVariantActive;
     if (isAllConfusedArtistsVariantActive) {
       let otherWordSameCategory = getRandomWordAndCategory([wordAndCategory.category]);
@@ -1164,7 +1203,7 @@ Template.lobby.events({
     // All Confused Artists variant ends
 
     // Fake Artist Less First variant
-    let shouldPlayLessFirstFakeArtistsVariant = document.getElementById('use-less-first-fake-artist-variant').checked;
+    let shouldPlayLessFirstFakeArtistsVariant = game.useLessFirstFakeArtistVariant === true;
 
     if (shouldPlayLessFirstFakeArtistsVariant && !isAllFakeArtistsVariantActive && !isNoFakeArtistsVariantActive) {
       if (firstPlayerIndex === fakeArtistIndex) {
