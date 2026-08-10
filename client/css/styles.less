@@ -1,5 +1,6 @@
 body {
   text-align: center;
+  color: #333;
 }
 
 body:after {
@@ -64,15 +65,10 @@ img.icon {
   border-color: #555 transparent transparent transparent;
 }
 
-.tooltip:hover .tooltiptext {
+.tooltip:hover .tooltiptext,
+.tooltip:focus-within .tooltiptext {
   visibility: visible;
   opacity: 1;
-}
-
-.high-load-message {
-  font-size: 0.8em;
-  color: #990000;
-  margin-top: 5px;
 }
 
 .button-container {
@@ -80,7 +76,7 @@ img.icon {
 }
 
 .main-content {
-  margin: 25% auto 0 auto;
+  margin: clamp(2rem, 10vh, 8rem) auto 0;
   max-width: 800px;
 }
 
@@ -219,12 +215,6 @@ a {
   text-align: left;
 }
 
-.variant-collapsible{
-  padding: 0 18px;
-  display: none;
-  overflow: hidden;
-}
-
 .lobby-player-list {
   margin-top: -15px;
   margin-bottom: -10px;
@@ -325,10 +315,6 @@ a {
   font-size: 1.5em;
 }
 
-.player-status-not-spy {
-  margin-bottom: 0;
-}
-
 .status-container {
   border-top: 1px solid #e1e1e1;
   border-bottom: 1px solid #e1e1e1;
@@ -415,19 +401,28 @@ a {
   font-size: 8px;
 }
 
-.player-reference {
-  margin-bottom: 20px;
-}
-
-.player-reference {
-  overflow: hidden;
-}
-
 input[type="text"] {
   box-sizing: border-box;
   width: 100%;
   max-width: 280px;
   height: 48px;
+}
+
+.variant label {
+  display: block;
+  padding: 0.45rem 0;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.variant input {
+  margin-right: 0.5rem;
+}
+
+@media (hover: none) {
+  .tooltip .tooltiptext {
+    display: none;
+  }
 }
 
 @media (max-width: 340px) {

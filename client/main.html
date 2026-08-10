@@ -2,11 +2,8 @@
   <meta charset="utf-8">
   <title>A Fake Artist Goes to New York</title>
 
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <link href="https://fonts.googleapis.com/css?family=Alef|Oswald|Open+Sans" rel="stylesheet" async media="none"
-    onload="if(media!='all')media='all'">
-
-
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" sizes="57x57" href="/apple-icon-57x57.png">
   <link rel="apple-touch-icon" sizes="60x60" href="/apple-icon-60x60.png">
   <link rel="apple-touch-icon" sizes="72x72" href="/apple-icon-72x72.png">
@@ -43,7 +40,7 @@
 <template name="startMenu">
   <div class="main-menu">
     <h4>{{_ "ui.welcome to fake artist" }}</h4>
-    <img src="/img/{{_ "ui.logo-file"}}" class="logo" id="logo">
+    <img src="/img/{{_ "ui.logo-file"}}" class="logo" id="logo" alt="">
 
     <hr>
 
@@ -68,8 +65,8 @@
 
   <div class="access-buttons">
     <div class="tooltip">
-      <a class="access-button" href="#" id="copyAccessLinkImg" style="cursor:pointer;">
-        <img src="/icons/copy.svg" class="icon" />
+      <a class="access-button" href="#" id="copyAccessLinkImg" aria-label='{{_ "ui.copy access link"}}'>
+        <img src="/icons/copy.svg" class="icon" alt="" />
       </a>
       <span class="tooltiptext" id="copyAccessLinkTooltip">
         {{_ "ui.copy access link"}}
@@ -78,15 +75,15 @@
 
     <span class="access-button-separator"></span>
 
-    <a class="access-button btn-toggle-qrcode" href="#">
-      <img src="/icons/qrcode.svg" class="icon" />
+    <a class="access-button btn-toggle-qrcode" href="#" aria-label='{{_ "ui.show qr code"}}'>
+      <img src="/icons/qrcode.svg" class="icon" alt="" />
     </a>
 
     <span class="access-button-separator"></span>
 
-    <a class="access-button btn-send-access-code-email"
+    <a class="access-button btn-send-access-code-email" aria-label='{{_ "ui.email game link"}}'
       href='mailto:?subject={{_ "ui.join my game" }}&body={{ accessLink }}'>
-      <img src="/icons/envelope-open.svg" class="icon" />
+      <img src="/icons/envelope-open.svg" class="icon" alt="" />
     </a>
   </div>
 
@@ -105,12 +102,12 @@
       {{ name }}
 
       {{#if isCurrent }}
-      <a href="#" class="btn-edit-player" data-player-id="{{ _id }}">
-        <img src="/icons/pencil-alt.svg" class="icon" />
+      <a href="#" class="btn-edit-player" data-player-id="{{ _id }}" aria-label='{{_ "ui.edit player"}}'>
+        <img src="/icons/pencil-alt.svg" class="icon" alt="" />
       </a>
       {{else}}
-      <a href="#" class="btn-remove-player" data-player-id="{{ _id }}">
-        <img src="/icons/window-close.svg" class="icon" />
+      <a href="#" class="btn-remove-player" data-player-id="{{ _id }}" aria-label='{{_ "ui.remove player"}}'>
+        <img src="/icons/window-close.svg" class="icon" alt="" />
       </a>
       {{/if}}
     </li>
@@ -160,14 +157,14 @@
   </div>
 
   <table>
-    <tr>
+    <tr class="custom-word-row">
       <td>
         {{_ "ui.choose own word"}}
       </td>
       <td>
         <div>
-          <input type="text" id="user-word" name="userWord" placeholder='{{_ "ui.enter word" }}'>
-          <input type="text" id="user-category" name="userCategory" placeholder='{{_ "ui.enter category" }}'>
+          <input type="text" id="user-word" name="userWord" maxlength="40" placeholder='{{_ "ui.enter word" }}'>
+          <input type="text" id="user-category" name="userCategory" maxlength="40" placeholder='{{_ "ui.enter category" }}'>
           <BR>
           <button class="btn-submit-user-word" data-player-id="{{ player._id}}">{{_ "ui.submit user word" }}</button>
         </div>
@@ -176,7 +173,7 @@
     <tr>
       <td colspan="2">
         {{_ "ui.choose categories"}}
-        <a class="btn-toggle-category-select" href="#">{{_ "ui.show hide" }}</a>
+        <a class="btn-toggle-category-select" href="#">{{_ "ui.toggle categories" }}</a>
         <div class="category-select form-group" style="display: none;">
           {{#each categories}}
             {{#if this.selected }}
@@ -211,20 +208,20 @@
   </h4>
 
   <div class="status-container">
-    <button class="btn-toggle-status">{{_ "ui.show hide" }}</button>
+    <button class="btn-toggle-status">{{_ "ui.toggle role" }}</button>
     <table>
       <tr>
         <td class="status-container-content">
           {{#if game.isAllConfusedArtistsVariantActive }}
-          <img src="/img/confused-artist.png" width=80px height=80px>
+          <img src="/img/confused-artist.png" width="80" height="80" alt="">
           {{else }}
           {{#if player.isFakeArtist }}
-          <img src="/img/fake-artist.png" width=80px height=80px>
+          <img src="/img/fake-artist.png" width="80" height="80" alt="">
           {{else }}
           {{#if player.isQuestionMaster }}
-          <img src="/img/presentor.png" width=80px height=80px>
+          <img src="/img/presentor.png" width="80" height="80" alt="">
           {{else }}
-          <img src="/img/real-artist.png" width=80px height=80px>
+          <img src="/img/real-artist.png" width="80" height="80" alt="">
           {{/if}}
           {{/if}}
           {{/if}}
@@ -322,11 +319,6 @@
     <button class="btn-leave">{{_ "ui.leave game" }}</button>
   </div>
 
-  <script type="text/javascript">
-    var sc_project = 11699336;
-    var sc_invisible = 1;
-    var sc_security = "0f5c66e9"; 
-  </script>
 </template>
 
 <template name="createGame">
@@ -342,7 +334,7 @@
 
   <form id="create-game">
     <div class="">
-      <input type="text" id="player-name" name="playerName" placeholder='{{_ "ui.enter your name" }}'>
+      <input type="text" id="player-name" name="playerName" maxlength="40" placeholder='{{_ "ui.enter your name" }}'>
 
       <div class="button-container">
         <input type="submit" value='{{_ "ui.create game" }}'>
@@ -365,9 +357,9 @@
 
   <form id="join-game">
     <div>
-      <input autocorrect="off" autocapitalize="off" type="number" id="access-code" name="accessCode"
-        placeholder='{{_ "ui.enter an access code" }}'>
-      <input type="text" id="player-name" name="playerName" placeholder='{{_ "ui.enter your name" }}'>
+      <input autocorrect="off" autocapitalize="off" inputmode="numeric" pattern="[0-9]{5}" maxlength="5"
+        type="text" id="access-code" name="accessCode" placeholder='{{_ "ui.enter an access code" }}'>
+      <input type="text" id="player-name" name="playerName" maxlength="40" placeholder='{{_ "ui.enter your name" }}'>
 
       <div class="button-container">
         <input type="submit" value='{{_ "ui.join" }}'>
@@ -397,7 +389,7 @@
 
   <div class="footer">
     {{_ "ui.credits"}}
-    <a href="http://oinkgms.com/">Oink Games</a>
+    <a href="https://oinkgames.com/">Oink Games</a>
     <BR>
     {{_ "ui.footer"}}
   </div>
@@ -408,5 +400,5 @@
     <a href='https://boardgamegeek.com/geekmail/compose?touser=alenros'>alenros@BGG</a> <BR>
     Or email me <a href="mailto:fakeartist@gmx.com">fakeartist@gmx.com</a>
   </div>
-  <div><a href='{{_ "ui.github link" }}'><img src="/icons/github.png">View on Github</a></div>
+  <div><a href='{{_ "ui.github link" }}'><img src="/icons/github.png" alt="">View on Github</a></div>
 </template>

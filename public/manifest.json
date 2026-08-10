@@ -1,5 +1,10 @@
 {
- "name": "App",
+ "name": "A Fake Artist Goes to New York",
+ "short_name": "Fake Artist",
+ "start_url": "/",
+ "display": "standalone",
+ "background_color": "#ffffff",
+ "theme_color": "#e4007f",
  "icons": [
   {
    "src": "\/android-icon-36x36.png",

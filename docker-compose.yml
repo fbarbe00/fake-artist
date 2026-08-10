@@ -3,19 +3,21 @@ services:
     build: .
     container_name: fake_artist
     restart: unless-stopped
+    mem_limit: 384m
     ports:
       - "127.0.0.1:40:3000"
     depends_on:
       - mongo
     environment:
-      MONGO_URL: mongodb://mongo:27017/fakeartist?tls=false
-      ROOT_URL: "https://yourdomainname.com" # Replace with your domain name
+      MONGO_URL: mongodb://mongo:27017/fakeartist
+      ROOT_URL: "https://fakeartist.blorps.eu"
       PORT: 3000
 
   mongo:
     image: mongo:7
     container_name: fake_artist_mongo
     restart: unless-stopped
+    mem_limit: 512m
     tmpfs:
       - /data/db:size=256m   # in-memory Mongo, resets on restart
     command:

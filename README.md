@@ -7,18 +7,19 @@ It is based on [Evan Brumley's](https://github.com/evanbrumley) Spyfall game.
 
 The original boardgame at BoardGameGeek: https://boardgamegeek.com/boardgame/135779/fake-artist-goes-new-york
 
-This fork updates the dependencies to the latest node version, removing outdated packages, and makes the docker container lighter.
+This fork runs on current Node and Meteor releases in a small, non-root Docker image.
 
-# Running Your Copy (with docker)
-If you're running this with a custom domain name, set the `ROOT_URL` to your domain name in `docker-compose.yml`. Then simply run
+# Running Your Copy (with Docker)
+Set `ROOT_URL` to your public HTTPS address in `docker-compose.yml`, then run:
 
 `docker compose up --build -d`
 
+The web service listens on `127.0.0.1:40` for use behind a reverse proxy. MongoDB is available only inside the Compose network. Games are intentionally kept in memory and reset on restart.
+
 # Translation
 The translation has two parts: the user interface and the words list.
-The words lists are in the `lib/` directory. to add a new wordlist you should add it in `main.js` in the `getRandomWordAndCategory()`;
-The UI translations are in the `public/translations/` directory. To add a new UI translation simply copy the English (`en.json`), rename the file prefix with the language code you want to translate
-and change the translated strings on the right side.
+Word lists are in `lib/`. Add a new list to `getWordsProvider()` in `client/main.js`.
+UI translations are in `public/translations/`. Copy `en.json`, rename it with the language code, translate its values, and add the language in `lib/i18n.js`.
 
 
 # Credits

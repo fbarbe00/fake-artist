@@ -1,7 +1,5 @@
-import 'jquery';
-
 Handlebars.registerHelper('toCapitalCase', function (str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
+  return str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
 });
 
 // Add i18n helper for templates
@@ -34,12 +32,13 @@ function getUserLanguage() {
     if (supportedLanguages[browserLanguage]) {
       return browserLanguage;
     }
-    return "en";
+    const baseLanguage = browserLanguage.split("-")[0];
+    return supportedLanguages[baseLanguage] ? baseLanguage : "en";
   }
 };
 
 function setUserLanguage(language) {
-  TAPi18n.setLanguage(language).done(function () {
+  TAPi18n.setLanguage(language).then(function () {
     Session.set("language", language);
     localStorage.setItem("language", language);
   });
@@ -206,12 +205,20 @@ function getWordsProvider() {
       break;
   }
 
-  let minimumWordsInCategory = 10;
+  let minimumWordsInCategory = 2;
 
   let excludedCategories = [];
 
 
-  let filteredWords = words.filter(word => !excludedCategories.includes(word.category.toLowerCase()));
+  let seenWords = new Set();
+  let filteredWords = words.filter(word => {
+    const key = `${word.category}\0${word.text}`.toLocaleLowerCase();
+    if (seenWords.has(key) || excludedCategories.includes(word.category.toLowerCase())) {
+      return false;
+    }
+    seenWords.add(key);
+    return true;
+  });
 
   let categoryToOccurences = {};
 
@@ -430,7 +437,7 @@ Template.createGame.events({
   'submit #create-game': function (event) {
     event.preventDefault();
 
-    let playerName = event.target.playerName.value;
+    let playerName = event.target.playerName.value.trim();
 
     if (!playerName) {
       return false;
@@ -473,7 +480,7 @@ Template.joinGame.events({
   'submit #join-game': function (event) {
     event.preventDefault();
     let accessCode = event.target.accessCode.value;
-    let playerName = event.target.playerName.value;
+    let playerName = event.target.playerName.value.trim();
 
     if (!playerName) {
       return false;
@@ -491,7 +498,7 @@ Template.joinGame.events({
         accessCode: accessCode
       });
 
-      if (game) {
+      if (game && game.state === 'waitingForPlayers') {
         Meteor.subscribe('players', game._id);
         let player = generateNewPlayer(game, playerName);
 
@@ -506,6 +513,8 @@ Template.joinGame.events({
         Session.set("gameID", game._id);
         Session.set("playerID", player._id);
         Session.set("currentView", "lobby");
+      } else if (game) {
+        FlashMessages.sendError(TAPi18n.__("ui.game already started"));
       } else {
         FlashMessages.sendError(TAPi18n.__("ui.invalid access code"));
       }
@@ -607,6 +616,7 @@ Template.lobby.events({
         variant.style.display = event.target.checked ? 'none' : '';
       }
     });
+    document.querySelector('.custom-word-row').style.display = event.target.checked ? 'none' : '';
   },
   'click .btn-toggle-category-select': function () {
     let categorySelect = document.querySelector(".category-select");
@@ -618,9 +628,12 @@ Template.lobby.events({
     return false;
   },
   'click .btn-submit-user-word': function (event) {
+    if (document.getElementById("use-confused-artist-variant").checked) {
+      return false;
+    }
     let game = getCurrentGame();
-    let word = document.getElementById("user-word").value;
-    let category = document.getElementById("user-category").value;
+    let word = document.getElementById("user-word").value.trim();
+    let category = document.getElementById("user-category").value.trim();
     if (word.length == 0 || category.length == 0) {
       return;
     }
@@ -632,8 +645,13 @@ Template.lobby.events({
     };
 
     let questionMasterId = event.currentTarget.dataset.playerId;
-    let currentPlayers = Array.from(Players.find({ gameID: game._id }, { _id: { $ne: questionMasterId } }));
+    let currentPlayers = Array.from(Players.find({ gameID: game._id }));
     let regularPlayers = currentPlayers.filter(player => player._id != questionMasterId);
+
+    if (currentPlayers.length < 3) {
+      FlashMessages.sendError(TAPi18n.__("ui.need more players"));
+      return false;
+    }
 
     let localEndTime = moment().add(game.lengthInMinutes, 'minutes');
     let gameEndTime = TimeSync.serverTime(localEndTime);
@@ -749,7 +767,6 @@ Template.lobby.events({
     if (shouldPlayLessFirstFakeArtistsVariant === true) {
       variantsUsed.push('less first');
     }
-
     Players.update(questionMasterId, {
       $set: {
         isQuestionMaster: true,
@@ -779,7 +796,7 @@ Template.lobby.events({
 
     Analytics.insert(gameAnalytics);
 
-    Games.update(game._id, { $set: { state: 'inProgress', word: wordAndCategory, endTime: gameEndTime, paused: false, pausedTime: null, usingAllFakeArtistsVariant: shouldPlayNoFakeArtistsVariant, usingNoFakeArist: shouldPlayNoFakeArtistsVariant, isAllConfusedArtistsVariantActive: false } });
+    Games.update(game._id, { $set: { state: 'inProgress', word: wordAndCategory, endTime: gameEndTime, paused: false, pausedTime: null, isAllConfusedArtistsVariantActive: false } });
   },
   'click .btn-start': function () {
 
@@ -790,9 +807,17 @@ Template.lobby.events({
     });
 
     categoriesList = Array.from(categoriesList).filter((category) => category.checked).map((category) => category.value);
+    if (categoriesList.length === 0) {
+      FlashMessages.sendError(TAPi18n.__("ui.select a category"));
+      return false;
+    }
     let wordAndCategory = getRandomWordAndCategory(categoriesList);
 
     let currentPlayers = Array.from(Players.find({ gameID: game._id }));
+    if (currentPlayers.length < 3) {
+      FlashMessages.sendError(TAPi18n.__("ui.need more players"));
+      return false;
+    }
     let localEndTime = moment().add(game.lengthInMinutes, 'minutes');
     let gameEndTime = TimeSync.serverTime(localEndTime);
 
@@ -929,6 +954,9 @@ Template.lobby.events({
     }
     if (shouldPlayLessFirstFakeArtistsVariant === true) {
       variantsUsed.push('less first');
+    }
+    if (shouldPlayAllConfusedArtistsVariant === true) {
+      variantsUsed.push('confused artist');
     }
 
     // Track game analytics
