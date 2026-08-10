@@ -1,34 +1,26 @@
-function cleanUpOldData(){
-  let cutOff = moment().subtract(2, 'hours').toDate().getTime();
-
-  Games.removeAsync({
-    createdAt: {$lt: cutOff}
-  });
-
-  Players.removeAsync({
-    createdAt: {$lt: cutOff}
-  });
-
-  UserWords.removeAsync({
-    createdAt: {$lt: cutOff}
-  });
-
-  Analytics.removeAsync({
-    createdAt: {$lt: cutOff}
-  });
+async function cleanUpOldData() {
+  const cutOff = moment().subtract(2, 'hours').toDate().getTime();
+  await Promise.all([
+    Games.removeAsync({ createdAt: { $lt: cutOff } }),
+    Players.removeAsync({ createdAt: { $lt: cutOff } }),
+    UserWords.removeAsync({ createdAt: { $lt: cutOff } }),
+    Analytics.removeAsync({ createdAt: { $lt: cutOff } }),
+  ]);
 }
 
-Meteor.startup(function () {
+Meteor.startup(async function () {
   // Delete all games and players at startup
-  Games.removeAsync({});
-  Players.removeAsync({});
-  UserWords.removeAsync({});
-  Analytics.removeAsync({});
+  await Promise.all([
+    Games.removeAsync({}),
+    Players.removeAsync({}),
+    UserWords.removeAsync({}),
+    Analytics.removeAsync({}),
+  ]);
 });
 
-let MyCron = new Cron(60000);
-
-MyCron.addJob(5, cleanUpOldData);
+Meteor.setInterval(() => {
+  cleanUpOldData().catch(error => console.error('Old game cleanup failed', error));
+}, 5 * 60 * 1000);
 
 Meteor.publish('games', function(accessCode) {
   check(accessCode, String);
