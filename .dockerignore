@@ -1,0 +1,6 @@
+.git
+.meteor/local
+.claude
+build
+node_modules
+npm-debug.log

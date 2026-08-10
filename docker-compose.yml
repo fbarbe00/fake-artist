@@ -4,7 +4,7 @@ services:
     container_name: fake_artist
     restart: unless-stopped
     ports:
-      - "40:3000"
+      - "127.0.0.1:40:3000"
     depends_on:
       - mongo
     environment:
@@ -16,10 +16,8 @@ services:
     image: mongo:7
     container_name: fake_artist_mongo
     restart: unless-stopped
-    ports:
-      - "27017:27017"
     tmpfs:
-      - /data/db   # in-memory Mongo, resets on restart
+      - /data/db:size=256m   # in-memory Mongo, resets on restart
     command:
       [
         "mongod",
