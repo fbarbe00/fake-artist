@@ -39,8 +39,15 @@
 
 <template name="startMenu">
   <div class="main-menu">
+    {{#if isInsiderSelected}}
+    <h4>{{_ "ui.welcome to insider" }}</h4>
+    <img src="/img/{{_ "ui.insider-logo-file"}}" class="logo" id="logo" alt="">
+    <a href="#" class="btn-switch-game">({{_ "ui.back to fake artist"}})</a>
+    {{else}}
     <h4>{{_ "ui.welcome to fake artist" }}</h4>
     <img src="/img/{{_ "ui.logo-file"}}" class="logo" id="logo" alt="">
+    <a href="#" class="btn-switch-game">({{_ "ui.also try insider"}})</a>
+    {{/if}}
 
     <hr>
 
@@ -48,9 +55,6 @@
 
       <button id="btn-new-game">{{_ "ui.new game" }}</button>
       <button id="btn-join-game">{{_ "ui.join game" }}</button>
-    </div>
-    <div>
-      <a href="https://github.com/alenros/insider"><strong>{{_ "ui.try insider"}}</strong></a>
     </div>
   </div>
 </template>
@@ -116,6 +120,7 @@
 
   <hr>
 
+  {{#unless isInsiderGame}}
   <div class="variants-container">
     <h4>{{_ "ui.variants"}}</h4>
     <div class="variant">
@@ -155,6 +160,7 @@
       </div>
     </div>
   </div>
+  {{/unless}}
 
   <table>
     <tr class="custom-word-row">
@@ -164,12 +170,15 @@
       <td>
         <div>
           <input type="text" id="user-word" name="userWord" maxlength="40" placeholder='{{_ "ui.enter word" }}'>
+          {{#unless isInsiderGame}}
           <input type="text" id="user-category" name="userCategory" maxlength="40" placeholder='{{_ "ui.enter category" }}'>
+          {{/unless}}
           <BR>
           <button class="btn-submit-user-word" data-player-id="{{ player._id}}">{{_ "ui.submit user word" }}</button>
         </div>
       </td>
     </tr>
+    {{#unless isInsiderGame}}
     <tr>
       <td colspan="2">
         {{_ "ui.choose categories"}}
@@ -186,6 +195,7 @@
         </div>
       </td>
     </tr>
+    {{/unless}}
     <tr>
       <td>
         {{_ "ui.let us choose"}}
@@ -209,6 +219,26 @@
 
   <div class="status-container">
     <button class="btn-toggle-status">{{_ "ui.toggle role" }}</button>
+    {{#if isInsiderGame}}
+    <table><tr>
+      <td class="status-container-content">
+        {{#if player.isInsider}}<img src="/img/role-insider.png" width="80" height="80" alt="">
+        {{else}}{{#if player.isQuestionMaster}}<img src="/img/role-question-master.png" width="80" height="80" alt="">
+        {{else}}<img src="/img/role-commoner.png" width="80" height="80" alt="">{{/if}}{{/if}}
+      </td>
+      <td><div class="status-container-content">
+        {{#if player.isInsider}}
+          <div class="player-status">{{_ "ui.you are the insider"}}</div>
+          <strong>{{toCapitalCase game.word}}</strong>
+        {{else}}{{#if player.isQuestionMaster}}
+          <div class="player-status">{{_ "ui.you are the question master"}}</div>
+          <strong>{{toCapitalCase game.word}}</strong>
+        {{else}}
+          <div class="player-status">{{_ "ui.you are a commoner"}}</div>
+        {{/if}}{{/if}}
+      </div></td>
+    </tr></table>
+    {{else}}
     <table>
       <tr>
         <td class="status-container-content">
@@ -292,6 +322,7 @@
         </td>
       </tr>
     </table>
+    {{/if}}
   </div>
 
   <h5>{{_ "ui.players" }}</h5>
@@ -315,6 +346,9 @@
   <hr>
 
   <div class="button-container">
+    {{#if isInsiderGame}}{{#if player.isQuestionMaster}}
+    <button class="btn-word-guessed">{{_ "ui.word guessed"}}</button>
+    {{/if}}{{/if}}
     <button class="btn-end">{{_ "ui.end game" }}</button>
     <button class="btn-leave">{{_ "ui.leave game" }}</button>
   </div>
@@ -326,7 +360,7 @@
     {{#if isLoading }}
     <span class="spinner"></span>
     {{else}}
-    {{_ "ui.welcome to fake artist" }}
+    {{#if isInsiderSelected}}{{_ "ui.welcome to insider" }}{{else}}{{_ "ui.welcome to fake artist" }}{{/if}}
     {{/if}}
   </h4>
 

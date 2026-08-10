@@ -232,12 +232,13 @@ function generateAccessCode() {
   return accessCode;
 }
 
-function generateNewGame() {
+function generateNewGame(gameType = "fakeArtist") {
   let game = {
     accessCode: generateAccessCode(),
     state: "waitingForPlayers",
     word: null,
-    lengthInMinutes: 10,
+    gameType: gameType,
+    lengthInMinutes: gameType === "insider" ? 5 : 10,
     endTime: null,
     paused: false,
     pausedTime: null
@@ -256,6 +257,7 @@ function generateNewPlayer(game, name) {
     category: null,
     isQuestionMaster: false,
     isFakeArtist: false,
+    isInsider: false,
     isFirstPlayer: false
   };
 
@@ -483,6 +485,11 @@ Template.footer.events({
 });
 
 Template.startMenu.events({
+  'click .btn-switch-game': function () {
+    const selectedGameType = Session.get("selectedGameType") || "fakeArtist";
+    Session.set("selectedGameType", selectedGameType === "insider" ? "fakeArtist" : "insider");
+    return false;
+  },
   'click #btn-new-game': function () {
     Session.set("currentView", "createGame");
     let referrer = document.referrer;
@@ -508,6 +515,12 @@ Template.startMenu.events({
   }
 });
 
+Template.startMenu.helpers({
+  isInsiderSelected() {
+    return Session.get("selectedGameType") === "insider";
+  }
+});
+
 Template.startMenu.rendered = function () {
   let referrer = document.referrer;
   let referrerAnalytics = {
@@ -527,7 +540,7 @@ Template.createGame.events({
       return false;
     }
 
-    let game = generateNewGame();
+    let game = generateNewGame(Session.get("selectedGameType") || "fakeArtist");
     let player = generateNewPlayer(game, playerName);
 
     Meteor.subscribe('games', game.accessCode);
@@ -554,6 +567,9 @@ Template.createGame.events({
 Template.createGame.helpers({
   isLoading: function () {
     return Session.get('loading');
+  },
+  isInsiderSelected() {
+    return Session.get("selectedGameType") === "insider";
   }
 });
 
@@ -645,6 +661,10 @@ Template.joinGame.rendered = function (event) {
 };
 
 Template.lobby.helpers({
+  isInsiderGame: function () {
+    const game = getCurrentGame();
+    return game && game.gameType === "insider";
+  },
   game: function () {
     return getCurrentGame();
   },
@@ -686,6 +706,41 @@ Template.lobby.helpers({
   }
 });
 
+function startInsiderGame(customWord) {
+  const game = getCurrentGame();
+  const players = Players.find({ gameID: game._id }).fetch();
+  if (players.length < 4) {
+    FlashMessages.sendError(TAPi18n.__("ui.insider needs players"));
+    return false;
+  }
+
+  const chosen = shuffle(players.map((player, index) => index));
+  const insiderIndex = chosen[0];
+  const questionMasterIndex = chosen[1];
+  const word = customWord || getRandomWordAndCategory([]).text;
+  const endTime = TimeSync.serverTime(moment().add(5, 'minutes'));
+
+  players.forEach((player, index) => {
+    Players.update(player._id, { $set: {
+      isInsider: index === insiderIndex,
+      isQuestionMaster: index === questionMasterIndex,
+      isFakeArtist: false,
+      isFirstPlayer: false,
+      turnOrder: null,
+      word: index === insiderIndex || index === questionMasterIndex ? word : null,
+    }});
+  });
+
+  Games.update(game._id, { $set: {
+    state: 'inProgress',
+    word: word,
+    endTime: endTime,
+    paused: false,
+    pausedTime: null,
+  }});
+  return false;
+}
+
 Template.lobby.events({
   'click .btn-leave': function () {
     leaveGame();
@@ -712,6 +767,11 @@ Template.lobby.events({
     return false;
   },
   'click .btn-submit-user-word': function (event) {
+    const currentGame = getCurrentGame();
+    if (currentGame.gameType === "insider") {
+      const insiderWord = document.getElementById("user-word").value.trim();
+      return insiderWord ? startInsiderGame(insiderWord) : false;
+    }
     if (document.getElementById("use-confused-artist-variant").checked) {
       return false;
     }
@@ -885,6 +945,9 @@ Template.lobby.events({
   'click .btn-start': function () {
 
     let game = getCurrentGame();
+    if (game.gameType === "insider") {
+      return startInsiderGame();
+    }
     let categoriesList = document.querySelectorAll('input[name="category-name"]');
     categoriesList.forEach((category) => {
       localStorage.setItem(category.value, category.checked);
@@ -1147,6 +1210,10 @@ function getTimeRemaining() {
 Template.gameView.helpers({
   game: getCurrentGame,
   player: getCurrentPlayer,
+  isInsiderGame() {
+    const game = getCurrentGame();
+    return game && game.gameType === "insider";
+  },
   players() {
     const game = getCurrentGame();
 
@@ -1207,6 +1274,13 @@ Template.gameView.events({
         element.style.display = 'none';
       }
     });
+    return false;
+  },
+  'click .btn-word-guessed': function () {
+    const game = getCurrentGame();
+    const elapsed = (5 * 60 * 1000) - getTimeRemaining();
+    const endTime = TimeSync.serverTime(moment().add(Math.max(0, elapsed), 'milliseconds'));
+    Games.update(game._id, { $set: { endTime: endTime, paused: false, pausedTime: null } });
     return false;
   },
   'click .game-countdown': function () {

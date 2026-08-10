@@ -3,6 +3,8 @@
 
 This player aid for A Fake Artist Goes to New York eliminates the need for a Question master and lets everyone participate.
 
+New lobbies can also run [Insider](https://github.com/alenros/insider) using the same lightweight server and player flow.
+
 It is based on [Evan Brumley's](https://github.com/evanbrumley) Spyfall game.
 
 The original boardgame at BoardGameGeek: https://boardgamegeek.com/boardgame/135779/fake-artist-goes-new-york
