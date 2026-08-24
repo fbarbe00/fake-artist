@@ -1,3 +1,4 @@
+// This dictionary is loaded only by the browser.
 words_fr = [
     { text: "grand-mère", category: "Famille" },
     { text: "grand-père", category: "Famille" },

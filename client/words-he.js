@@ -1,4 +1,5 @@
-﻿words_he = [
+// This dictionary is loaded only by the browser.
+words_he = [
   {
     text:'יאיר לפיד',category: 'מה ישראלי בעיניך'
   },

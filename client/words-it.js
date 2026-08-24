@@ -1,4 +1,5 @@
-words_it =[
+// This dictionary is loaded only by the browser.
+words_it = [
   {
     category: 'Accessorio',
     text: 'bandana'

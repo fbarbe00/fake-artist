@@ -1,4 +1,4 @@
-// Simple i18n replacement for tap:i18n
+// Browser-side i18n replacement for tap:i18n
 const translations = {
   en: {},
   es: {},

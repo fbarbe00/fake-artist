@@ -18,8 +18,6 @@ services:
     container_name: fake_artist_mongo
     restart: unless-stopped
     mem_limit: 512m
-    tmpfs:
-      - /data/db:size=256m   # in-memory Mongo, resets on restart
     command:
       [
         "mongod",

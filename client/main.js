@@ -450,16 +450,6 @@ function getSelectedCategories() {
   return categoryInputs.filter(category => category.checked).map(category => category.value);
 }
 
-function shuffleArray(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    let j = Math.floor(Math.random() * (i + 1));
-    let temp = array[i];
-    array[i] = array[j];
-    array[j] = temp;
-  }
-  return array;
-}
-
 function resetUserState() {
   let player = getCurrentPlayer();
 
@@ -686,7 +676,7 @@ Template.createGame.helpers({
   }
 });
 
-Template.createGame.rendered = function (event) {
+Template.createGame.rendered = function () {
   document.getElementById("player-name").focus();
 };
 
@@ -757,7 +747,7 @@ Template.joinGame.helpers({
 });
 
 
-Template.joinGame.rendered = function (event) {
+Template.joinGame.rendered = function () {
   let referrer = document.referrer;
   let referrerAnalytics = {
     cameFrom: referrer,
@@ -1331,18 +1321,10 @@ Template.lobby.events({
     Session.set('urlAccessCode', game.accessCode);
     Session.set('currentView', 'joinGame');
     return false;
-  },
-  'click .btn-bad-category': function () {
-    console.log('got a bad category');
-    console.log('game.wordAndCategory.category');
-  },
-  'click .btn-bad-word': function () {
-    console.log('got a bad word');
-    console.log('game.wordAndCategory.text');
   }
 });
 
-Template.lobby.rendered = function (event) {
+Template.lobby.rendered = function () {
   let url = getAccessLink();
   url = `${Meteor.absoluteUrl()}${url}`;
   const qrcodesvg = new Qrcodesvg(url, 'qrcode', 250);
@@ -1386,9 +1368,6 @@ Template.gameView.helpers({
     });
 
     return players;
-  },
-  words() {
-    return words_en;
   },
   gameFinished() {
     const timeRemaining = getTimeRemaining();

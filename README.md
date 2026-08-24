@@ -16,11 +16,11 @@ Set `ROOT_URL` to your public HTTPS address in `docker-compose.yml`, then run:
 
 `docker compose up --build -d`
 
-The web service listens on `127.0.0.1:40` for use behind a reverse proxy. MongoDB is available only inside the Compose network. Games are intentionally kept in memory and reset on restart.
+The web service listens on `127.0.0.1:40` for use behind a reverse proxy. MongoDB is available only inside the Compose network. Game data is cleared when the app starts and expires after two hours.
 
 # Translation
 The translation has two parts: the user interface and the words list.
-Word lists are in `lib/`. Add a new list to `getWordsProvider()` in `client/main.js`.
+Word lists are in `client/`. Add a new list to `getWordsProvider()` in `client/main.js`.
 UI translations are in `public/translations/`. Copy `en.json`, rename it with the language code, translate its values, and add the language in `lib/i18n.js`.
 
 

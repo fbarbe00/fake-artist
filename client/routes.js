@@ -1,4 +1,4 @@
-// Simple client-side routing without iron:router
+// Browser-side routing without iron:router
 if (Meteor.isClient) {
   function handleRouting() {
     const path = window.location.pathname;

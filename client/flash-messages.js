@@ -1,4 +1,4 @@
-// Simple flash messages replacement for mrt:flash-messages
+// Browser-side flash messages replacement for mrt:flash-messages
 if (Meteor.isClient) {
   const FlashMessages = {
     messages: [],
